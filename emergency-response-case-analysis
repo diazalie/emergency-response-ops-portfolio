@@ -1,1 +1,314 @@
-
+{
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Streamlit Notebook",
+   "name": "streamlit"
+  },
+  "lastEditStatus": {
+   "notebookId": "fkjrie6i7ljtlcg6ceg6",
+   "authorId": "68005441591",
+   "authorName": "ALIEDIAZ",
+   "authorEmail": "diaz.alie@gmail.com",
+   "sessionId": "a6b3de13-1779-48c4-a39c-da398821cf5c",
+   "lastEditTime": 1759692259013
+  }
+ },
+ "nbformat_minor": 5,
+ "nbformat": 4,
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "3775908f-ca36-4846-8f38-5adca39217f2",
+   "metadata": {
+    "name": "project_title",
+    "collapsed": false
+   },
+   "source": "# Emergency Response Ops – Portfolio\nRaw → Cleaned → Insights (Severity Mix, Agent Performance, Hotspots)\n\n**Goal:** Standardize severity values, compute resolution time, and surface 3 business insights.\n"
+  },
+  {
+   "cell_type": "code",
+   "id": "c695373e-ac74-4b62-a1f1-08206cbd5c81",
+   "metadata": {
+    "language": "sql",
+    "name": "cell3"
+   },
+   "source": "USE WAREHOUSE SYSTEM$STREAMLIT_NOTEBOOK_WH;\nUSE DATABASE emergency_response;\nUSE SCHEMA public;\n",
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6e6b6b38-9230-4ad4-b077-fca4a5562fa9",
+   "metadata": {
+    "name": "data_peek",
+    "collapsed": false
+   },
+   "source": " # Quick peek at the data "
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ffadd354-9f21-4467-9438-9034f2ce94a9",
+   "metadata": {
+    "name": "title_casestable",
+    "collapsed": false
+   },
+   "source": "### Cases table"
+  },
+  {
+   "cell_type": "code",
+   "id": "8d50cbf4-0c8d-4950-86cb-114990437ac9",
+   "metadata": {
+    "language": "sql",
+    "name": "view_casestable"
+   },
+   "source": "SELECT * FROM cases LIMIT 5;",
+   "execution_count": null,
+   "outputs": []
+  },
+  {
+   "cell_type": "markdown",
+   "id": "2661f933-0cff-4354-8208-3a330d58174c",
+   "metadata": {
+    "name": "title_agentstable",
+    "collapsed": false
+   },
+   "source": "### Agents table"
+  },
+  {
+   "cell_type": "code",
+   "id": "f75792c2-0584-4b8c-b0b4-b888e574d168",
+   "metadata": {
+    "language": "sql",
+    "name": "view_agentstable"
+   },
+   "outputs": [],
+   "source": "SELECT * FROM agents LIMIT 5;",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c92fe612-c48b-426f-af3b-a8622bdfda4d",
+   "metadata": {
+    "name": "title_travelerstable",
+    "collapsed": false
+   },
+   "source": "### Travelers table "
+  },
+  {
+   "cell_type": "code",
+   "id": "f5f97b82-a576-4733-b031-7a9bf280fbc7",
+   "metadata": {
+    "language": "sql",
+    "name": "view_travelers_table"
+   },
+   "outputs": [],
+   "source": "SELECT * FROM travelers LIMIT 5;",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "83bec10a-2341-4a85-baff-d011e42da50f",
+   "metadata": {
+    "name": "title_cleandata",
+    "collapsed": false
+   },
+   "source": "# Clean the data"
+  },
+  {
+   "cell_type": "code",
+   "id": "b3122e78-a1e8-408a-9d07-3ce6a45dac9d",
+   "metadata": {
+    "language": "sql",
+    "name": "clean_data"
+   },
+   "outputs": [],
+   "source": "CREATE OR REPLACE VIEW cases_clean AS\nSELECT\n  case_number,\n  prod_id,\n  traveler_id,\n  subject,\n  case_owner_alias,\n  UPPER(TRIM(severity)) AS severity_cleaned,\n  country,\n  city,\n  agent_id,\n  date_time_opened AS dt_opened,\n  date_time_closed AS dt_closed,\n  \n  -- compute duration in minutes if both timestamps are present\n  IFF(\n    date_time_opened IS NULL OR date_time_closed IS NULL,\n    NULL,\n    DATEDIFF(minute, date_time_opened, date_time_closed)\n  ) AS resolution_minutes\nFROM cases;\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "92bbe215-aa9a-41d0-9c7d-23c190cdbb04",
+   "metadata": {
+    "name": "title_sanitycheck",
+    "collapsed": false
+   },
+   "source": "### Quick sanity check "
+  },
+  {
+   "cell_type": "code",
+   "id": "909fc923-35e1-4208-9966-ff9053ea9925",
+   "metadata": {
+    "language": "sql",
+    "name": "sanitycheck"
+   },
+   "outputs": [],
+   "source": "--Peek \nSELECT * FROM cases_clean LIMIT 10;",
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "id": "ebfb5e4d-d4eb-4f36-8fd1-b1da9c6e2fd9",
+   "metadata": {
+    "language": "sql",
+    "name": "sanitycheck1",
+    "codeCollapsed": false
+   },
+   "outputs": [],
+   "source": "-- How many rows have no resolution time yet?\nSELECT COUNT(*) AS rows_with_null_duration\nFROM cases_clean\nWHERE resolution_minutes IS NULL;",
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "id": "b11d79ae-d4b1-4d7e-b540-2429bb933e1f",
+   "metadata": {
+    "language": "sql",
+    "name": "sanitycheck2"
+   },
+   "outputs": [],
+   "source": "-- Severity distribution (after cleaning)\nSELECT severity_cleaned, COUNT(*) AS total_cases\nFROM cases_clean\nGROUP BY severity_cleaned\nORDER BY total_cases DESC;",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "613f1fb8-b840-4095-8b20-c78040b27b20",
+   "metadata": {
+    "name": "insight1",
+    "collapsed": false
+   },
+   "source": "# Insight 1-Case Volume & Severity Trends \n### Which severities are most common? \n**Why it matters:** shows the mix of work by urgency; informs staffing & triage focus."
+  },
+  {
+   "cell_type": "code",
+   "id": "87cdd697-ded8-477d-8171-7cc07e2e15eb",
+   "metadata": {
+    "language": "sql",
+    "name": "sql_casesbyseverity",
+    "collapsed": false,
+    "codeCollapsed": false
+   },
+   "outputs": [],
+   "source": "SELECT\n  severity_cleaned,\n  COUNT(*) AS total_cases\nFROM cases_clean\nGROUP BY severity_cleaned\nORDER BY total_cases DESC;\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "id": "74afec2b-0102-4052-ae4d-91b2108633cd",
+   "metadata": {
+    "language": "python",
+    "name": "chart_casesbyseverity"
+   },
+   "outputs": [],
+   "source": "import altair as alt\nimport streamlit as st\n\n# Get results from SQL cell 13\ndf = cell13.to_pandas()\n\n# Sort descending\ndf = df.sort_values(\"TOTAL_CASES\", ascending=False)\n\n# Base bar chart\nchart = (\n    alt.Chart(df)\n    .mark_bar()\n    .encode(\n        x=alt.X(\"SEVERITY_CLEANED:N\",\n                title=\"Severity\",\n                sort=\"-y\",\n                axis=alt.Axis(labelAngle=0)),   \n        y=alt.Y(\"TOTAL_CASES:Q\", title=\"Total Cases\"),\n        color=alt.Color(\"SEVERITY_CLEANED:N\", legend=None),   \n        tooltip=[\"SEVERITY_CLEANED\", \"TOTAL_CASES\"]\n    )\n)\n\n# Add text labels above bars\ntext = chart.mark_text(\n    align=\"center\",\n    baseline=\"bottom\",\n    dy=-2,\n    color=\"black\"\n).encode(\n    text=\"TOTAL_CASES:Q\"\n)\n\n# Combine chart + text\nfinal_chart = chart + text\n\nst.subheader(\"Cases by Severity\")\nst.altair_chart(final_chart, use_container_width=True)\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "91fe0ce2-e89b-44a8-95d3-dbd13ea7cb3f",
+   "metadata": {
+    "name": "summary1insight",
+    "collapsed": false
+   },
+   "source": "### Summary — Case Severity Mix\n- Most cases are **Severity D (low urgency)**, followed by **Severity C**.  \n- High-severity cases (A/B) are rare, making up less than 10% of the total volume.  \n- This indicates that the bulk of operational workload is **routine, lower-priority support**.  \n\n**Action:**  \nOptimize staffing for **high-volume, low-severity triage**, while maintaining a **specialized escalation path** for Severity A/B cases to ensure critical issues are resolved quickly without over-allocating resources.  \n"
+  },
+  {
+   "cell_type": "markdown",
+   "id": "08dd9f98-bf88-458a-a22f-428d1ab66952",
+   "metadata": {
+    "name": "insight2",
+    "collapsed": false
+   },
+   "source": "# Insight 2-Agent Performance\n### Which agents close cases fastest? Useful for coaching and scheduling. "
+  },
+  {
+   "cell_type": "code",
+   "id": "9f62478a-570d-479c-ada1-4662a660f8c9",
+   "metadata": {
+    "language": "sql",
+    "name": "agent_performance"
+   },
+   "outputs": [],
+   "source": "SELECT\n  a.agent_id,\n  a.shift_type,\n  a.shift_region,\n  COUNT(*) AS cases_handled,\n  ROUND(AVG(resolution_minutes), 2) AS avg_resolution_minutes\nFROM cases_clean c\nJOIN agents a\n  ON c.agent_id = a.agent_id\nWHERE resolution_minutes IS NOT NULL\nGROUP BY a.agent_id, a.shift_type, a.shift_region\nORDER BY avg_resolution_minutes ASC;\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "id": "489c19f8-c519-46b0-9450-0b57e6cb8699",
+   "metadata": {
+    "language": "sql",
+    "name": "ten_fastest_agents"
+   },
+   "outputs": [],
+   "source": "-- Fastest 10 agents\nSELECT *\nFROM (\n  SELECT a.agent_id, a.shift_type, a.shift_region,\n         COUNT(*) AS cases_handled,\n         ROUND(AVG(resolution_minutes), 2) AS avg_resolution_minutes\n  FROM cases_clean c\n  JOIN agents a ON c.agent_id = a.agent_id\n  WHERE resolution_minutes IS NOT NULL\n  GROUP BY a.agent_id, a.shift_type, a.shift_region\n)\nORDER BY avg_resolution_minutes ASC\nLIMIT 10;",
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "id": "44e490b6-5b06-4e94-965d-95337ab0bbf8",
+   "metadata": {
+    "language": "python",
+    "name": "chart_top10agents"
+   },
+   "outputs": [],
+   "source": "import altair as alt\nimport streamlit as st\n\n# 1) Get the SQL results into pandas\n#   Replace top10agents with your SQL cell name (or use cell15 / cell16 etc.)\ndf = ten_fastest_agents.to_pandas()\n\n# 2) Build the chart (horizontal; fastest on top)\nchart = (\n    alt.Chart(df)\n    .mark_bar()\n    .encode(\n        y=alt.Y(\"AGENT_ID:N\", title=\"Agent ID\", sort=\"x\"),     # fastest (smallest x) at top\n        x=alt.X(\"AVG_RESOLUTION_MINUTES:Q\", title=\"Avg Resolution (mins)\"),\n        color=alt.Color(\"AGENT_ID:N\", legend=None),             # different color per bar\n        tooltip=[\"AGENT_ID\", \"SHIFT_TYPE\", \"SHIFT_REGION\", \"CASES_HANDLED\", \"AVG_RESOLUTION_MINUTES\"]\n    )\n)\n\n# 3) Add numbers to bars\ntext = chart.mark_text(align=\"left\", baseline=\"middle\", dx=4, color=\"black\").encode(\n    text=alt.Text(\"AVG_RESOLUTION_MINUTES:Q\", format=\".1f\")\n)\n\n# 4) RENDER the chart (this line is what was missing)\nst.subheader(\"Top 10 Fastest Agents (Avg Resolution Minutes)\")\nst.altair_chart(chart + text, use_container_width=True)\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "bf8fb9bb-f276-4945-b9c4-60928ae72a23",
+   "metadata": {
+    "name": "summary2insight",
+    "collapsed": false
+   },
+   "source": "### Summary — Top 10 Fastest Agents\n- Fastest agents close cases in **~160–190 minutes** on average; several sit well **under 200 minutes**.\n- The leaderboard highlights consistent, repeatable performance — not one-offs — and shows **clear separation** from slower peers (>200 min).\n- **Action:** Use these agents’ workflows for peer coaching; align complex queues to proven fast performers, and review slower agents’ cases for bottlenecks (handoffs, escalations, region/time coverage).\n"
+  },
+  {
+   "cell_type": "markdown",
+   "id": "dff3fe84-131d-4597-af0d-87770c8b5186",
+   "metadata": {
+    "name": "title_geographichotspots",
+    "collapsed": false
+   },
+   "source": "# Insight 3- Geographic Hotspots \n### Where do issues occur most often? This highlights countries where travelers face the most disruptions. "
+  },
+  {
+   "cell_type": "code",
+   "id": "cc4f0c13-bb4e-46c0-ad92-cfb385613c45",
+   "metadata": {
+    "language": "sql",
+    "name": "geographic_hotspots"
+   },
+   "outputs": [],
+   "source": "SELECT\n  country,\n  COUNT(*) AS case_count,\n  ROUND(AVG(resolution_minutes), 2) AS avg_resolution_minutes\nFROM cases_clean\nWHERE country IS NOT NULL AND country <> ''\nGROUP BY country\nORDER BY case_count DESC\nLIMIT 10;\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "code",
+   "id": "2a8c64f6-fe4d-4d28-a216-e33581538902",
+   "metadata": {
+    "language": "python",
+    "name": "chart_geographichotspots"
+   },
+   "outputs": [],
+   "source": "import altair as alt\nimport streamlit as st\n\n# Pull SQL results into pandas (replace with your SQL cell number)\ndf = cell17.to_pandas()   # update to your actual cell number\n\n# Sort by case_count descending\ndf = df.sort_values(\"CASE_COUNT\", ascending=False)\n\n# Build chart\nchart = (\n    alt.Chart(df)\n    .mark_bar()\n    .encode(\n        x=alt.X(\"COUNTRY:N\", title=\"Country\", sort=\"-y\",\n                axis=alt.Axis(labelAngle=-30)),   \n        y=alt.Y(\"CASE_COUNT:Q\", title=\"Case Count\"),\n        color=alt.Color(\"COUNTRY:N\", legend=None),   \n        tooltip=[\"COUNTRY\", \"CASE_COUNT\", \"AVG_RESOLUTION_MINUTES\"]\n    )\n)\n\n# Add numbers above bars\ntext = chart.mark_text(\n    align=\"center\",\n    baseline=\"bottom\",\n    dy=-2,\n    color=\"black\"\n).encode(\n    text=\"CASE_COUNT:Q\"\n)\n\n# Combine bar + labels\nfinal_chart = chart + text\n\nst.subheader(\"Cases by Country (Top 10)\")\nst.altair_chart(final_chart, use_container_width=True)\n",
+   "execution_count": null
+  },
+  {
+   "cell_type": "markdown",
+   "id": "525f14f4-5309-4d8f-a1cb-17022312eb60",
+   "metadata": {
+    "name": "insight3sum",
+    "collapsed": false
+   },
+   "source": "### Summary — Geographic Hotspots\n- The highest number of cases come from **Italy, United States, and Japan**, each with ~190–200 cases.  \n- These hotspots indicate regions where travelers face more frequent disruptions, likely influenced by local infrastructure, demand patterns, or travel volumes.  \n- Case volumes remain consistently high across multiple countries, reinforcing the need for global resource planning.  \n\n**Action:**  \nPrioritize **regional support strategies** in top-case countries (Italy, U.S., Japan) by increasing local partnerships, dedicating more regional agents, and providing **proactive traveler communication**. This can reduce case escalations and improve overall service delivery.  \n"
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c3d2a53f-363d-440d-971d-6b05d10e5185",
+   "metadata": {
+    "name": "summary",
+    "collapsed": false
+   },
+   "source": "# ✅ Final Wrap-Up & Recommendations  \n\nThis analysis of Emergency Response case data highlights key patterns in **severity distribution, agent performance, and geographic hotspots**.  \n\n### Key Insights  \n1. **Case Severity Mix**  \n   - Majority of cases are **low urgency (Severity D & C)**.  \n   - High-severity cases (A/B) are rare (<10%).  \n   👉 Resources should be optimized for **high-volume, low-severity triage**, with clear escalation for critical cases.  \n\n2. **Agent Performance**  \n   - Top-performing agents resolve cases in **~160–190 minutes** on average.  \n   - A few agents stand out as both **fast and handling high volume**, while others take significantly longer.  \n   👉 Recognition and **peer coaching** from top performers can uplift slower agents. Shift planning can route complex or urgent cases to proven fast agents.  \n\n3. **Geographic Hotspots**  \n   - Highest case volumes occur in **Italy, U.S., and Japan** (~190–200 each).  \n   - These regions show consistent traveler disruption.  \n   👉 Establish **regional partnerships**, expand local support coverage, and provide proactive communication to travelers in these markets.  \n\n---\n\n### 📌 Recommendations  \n- **Resource Allocation:** Staff more heavily for **routine triage** while protecting bandwidth for rare but critical Severity A/B cases.  \n- **Agent Development:** Use performance metrics to drive **training, recognition, and scheduling strategies**. Highlight “star agents” as process role models.  \n- **Regional Strat**\n"
+  }
+ ]
+}
