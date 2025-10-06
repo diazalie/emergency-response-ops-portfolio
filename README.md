@@ -33,12 +33,15 @@ Leadership wanted visibility into:
 - Business Communication: turning queries → executive summaries  
 
 ## Results & Business Recommendations
+
 - **Severity mix:** Routine low-severity cases dominate → staff triage teams accordingly; maintain an escalation lane for Severity A/B.
 ![Cases by Severity](cases%20by%20severity.png)  
-*Severity B and C cases dominate the workload, while Severity A cases require the fastest response times.*  
+*Severity B and C cases dominate the workload, while Severity A cases require the fastest response times.*
+
 - **Agent performance:** Fastest agents average ~3 hours; some are high-volume + fast → replicate workflows, coach slower peers, align shifts with top performers.
 ![Top 10 Agents](top%2010%20agents.png)  
-*Top-performing agents resolve significantly more cases, highlighting opportunities for knowledge-sharing and workflow optimization.*  
+*Top-performing agents resolve significantly more cases, highlighting opportunities for knowledge-sharing and workflow optimization.*
+
 - **Geographic hotspots:** Italy, U.S., Japan show highest disruption volume → strengthen local provider partnerships, allocate more regional coverage, and add proactive traveler communication.
 ![Cases by Country](cases%20by%20country.png)  
 *Distribution of cases shows the highest volume from North America and Europe, with notable clusters in Asia-Pacific.*
